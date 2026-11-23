@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bingo – statistiques</title>
+<title>Bingo – statistics</title>
 <style>
   :root { --bg:#f6f4ee; --fg:#222; --card:#fff; --accent:#2e7d5b; --muted:#777; --line:#d8d4c8; }
   @media (prefers-color-scheme: dark) { :root { --bg:#1b1c1e; --fg:#eee; --card:#26282b; --accent:#5cc597; --muted:#9a9a9a; --line:#3a3d41; } }
@@ -19,8 +19,8 @@
 </head>
 <body>
 <main>
-  <h1>Statistiques</h1>
-  <p><input id="key" type="password" placeholder="Clé admin"> <button id="go">Charger</button> <button id="csv" style="display:none">Export CSV</button></p>
+  <h1>Statistics</h1>
+  <p><input id="key" type="password" placeholder="Admin key"> <button id="go">Load</button> <button id="csv" style="display:none">Export CSV</button></p>
   <p id="info"></p>
   <div id="out"></div>
 </main>
@@ -31,12 +31,12 @@
   var $ = function (id) { return document.getElementById(id); };
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   $("go").addEventListener("click", function () {
-    if (!C.endpoint) { $("info").innerHTML = '<span class="err">Aucun endpoint configuré dans config.js.</span>'; return; }
-    $("info").textContent = "Chargement…";
+    if (!C.endpoint) { $("info").innerHTML = '<span class="err">No endpoint configured in config.js.</span>'; return; }
+    $("info").textContent = "Loading…";
     fetch(C.endpoint + "?key=" + encodeURIComponent($("key").value))
       .then(function (r) { return r.json(); })
       .then(function (d) { if (d.error) throw new Error(d.error); rows = d.rows; render(); })
-      .catch(function (e) { $("info").innerHTML = '<span class="err">Erreur : ' + esc(e.message) + "</span>"; });
+      .catch(function (e) { $("info").innerHTML = '<span class="err">Error: ' + esc(e.message) + "</span>"; });
   });
   function render() {
     var people = {}; rows.forEach(function (r) { people[r.participant] = 1; });
@@ -47,7 +47,7 @@
     C.squares.forEach(function (s) { by[s] = { n: 0, names: [] }; });
     rows.forEach(function (r) {
       var b = by[r.square] || (by[r.square] = { n: 0, names: [] });
-      b.n++; if (r.comment) b.names.push(r.comment + " (vu par " + r.participant + ")");
+      b.n++; if (r.comment) b.names.push(r.comment + " (seen by " + r.participant + ")");
     });
     var keys = Object.keys(by).sort(function (a, b) { return by[b].n - by[a].n; });
     $("out").innerHTML = keys.map(function (k) {
@@ -58,7 +58,7 @@
     }).join("");
   }
   $("csv").addEventListener("click", function () {
-    var lines = ["horodatage;participant;case;commentaire"].concat(rows.map(function (r) {
+    var lines = ["timestamp;participant;square;comment"].concat(rows.map(function (r) {
       return [r.timestamp, r.participant, r.square, r.comment].map(function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(";");
     }));
     var a = document.createElement("a");

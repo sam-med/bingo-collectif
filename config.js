@@ -1,7 +1,7 @@
 // ===== À PERSONNALISER =====
 window.BINGO_CONFIG = {
   title: "Bingo !",
-  subtitle: "Touchez une case quand elle s'applique à vous, et ajoutez un commentaire si vous voulez (facultatif).",
+  subtitle: "Tap a square when it applies to you, and add a comment if you like (optional).",
   columns: 3,
   // Une entrée = une case. Ajoutez / modifiez librement.
   squares: [
@@ -29,5 +29,5 @@ window.BINGO_CONFIG = {
   ],
   // URL du script Google Apps Script déployé (voir README.md). Vide = mode test (rien n'est envoyé).
   endpoint: "https://script.google.com/macros/s/AKfycbwpwPOefISlxYb7a-0lzdFaXnvR9TbJIXadc4I5WP_7lB9CCJ2iWfYRI-teFt-bvIlyaw/exec",
-  commentLabel: "Commentaire / nom (facultatif)"
+  commentLabel: "Comment / name (optional)"
 };

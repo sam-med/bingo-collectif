@@ -18,7 +18,7 @@ function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
     var who = String(data.participant || "").trim().slice(0, 60);
-    if (!who) return out_({ error: "participant manquant" });
+    if (!who) return out_({ error: "missing participant" });
     var sh = sheet_();
     var vals = sh.getDataRange().getValues();
     for (var i = vals.length - 1; i >= 1; i--) {
@@ -37,7 +37,7 @@ function doPost(e) {
 
 // Lecture pour stats.html (protégée par la clé).
 function doGet(e) {
-  if (!e.parameter || e.parameter.key !== ADMIN_KEY) return out_({ error: "clé invalide" });
+  if (!e.parameter || e.parameter.key !== ADMIN_KEY) return out_({ error: "invalid key" });
   var vals = sheet_().getDataRange().getValues().slice(1);
   return out_({
     rows: vals.map(function (r) {
