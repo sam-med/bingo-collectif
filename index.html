@@ -25,6 +25,8 @@
   .count { margin:16px 0 14px; text-align:center; font-size:.8rem; letter-spacing:.1em; text-transform:uppercase; font-weight:700; }
   .send { width:100%; padding:14px; font:inherit; font-size:1rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; border:0; background:var(--teal); color:var(--cream); cursor:pointer; }
   .send:disabled { opacity:.5; }
+  .status { margin:0 0 14px; text-align:center; font-size:.85rem; color:var(--teal); min-height:1.2em; }
+  .status.err { color:var(--red); }
   .msg { margin-top:14px; padding:12px; background:var(--red-soft); text-align:center; font-size:.9rem; display:none; }
   .msg.err { background:var(--red); color:var(--cream); }
   dialog { border:2px solid var(--red); background:var(--cream); color:var(--red); padding:18px; width:min(92vw,380px); font-family:inherit; }
@@ -45,6 +47,7 @@
   </label>
   <div class="grid" id="grid"></div>
   <p class="count" id="count"></p>
+  <p class="status" id="status"></p>
   <button class="send" id="send">Submit my answers</button>
   <div class="msg" id="msg"></div>
 </main>
@@ -73,6 +76,7 @@
   $("dlgInput").placeholder = C.commentLabel;
   $("who").value = state.who || "";
   $("who").addEventListener("input", function (e) { state.who = e.target.value; save(); });
+  // changed() est défini plus bas (fonction hissée)
 
   var grid = $("grid");
   grid.style.gridTemplateColumns = "repeat(" + C.columns + ", 1fr)";
@@ -106,7 +110,7 @@
   function openCell(i) {
     cur = i; removed = false;
     var st = state.cells[i];
-    if (!st.on) { st.on = true; paint(i); updateCount(); save(); }
+    if (!st.on) { st.on = true; paint(i); updateCount(); changed(); }
     $("dlgText").textContent = C.squares[i];
     $("dlgInput").value = st.comment || "";
     if (dlg.showModal) dlg.showModal(); else dlg.setAttribute("open", "");
@@ -120,29 +124,61 @@
     if (cur < 0) return;
     var st = state.cells[cur];
     if (removed) { st.on = false; st.comment = ""; } else { st.comment = $("dlgInput").value; }
-    paint(cur); updateCount(); save(); cur = -1;
+    paint(cur); updateCount(); changed(); cur = -1;
   });
 
   function show(text, err) {
     var m = $("msg"); m.textContent = text; m.className = "msg" + (err ? " err" : ""); m.style.display = "block";
   }
-
-  $("send").addEventListener("click", function () {
-    var who = (state.who || "").trim();
-    if (!who) { show("Please enter your name before submitting.", true); return; }
+  function setStatus(text, err) {
+    var s = $("status"); s.textContent = text; s.className = "status" + (err ? " err" : "");
+  }
+  function whoName() { return (state.who || "").trim(); }
+  function buildPayload() {
     var answers = C.squares.map(function (label, i) {
       var st = state.cells[i] || {};
       return { index: i, square: label, checked: !!st.on, comment: (st.comment || "").trim() };
     });
-    var payload = { participant: who, answers: answers };
-    if (!C.endpoint) { console.log(payload); show("Test mode: no endpoint configured, nothing was sent (see the console).", false); return; }
-    var b = $("send"); b.disabled = true;
+    return { participant: whoName(), answers: answers };
+  }
+
+  // Envoi automatique : à chaque modification, après une courte pause (1,2 s).
+  // Un seul envoi à la fois ; la grille complète est renvoyée (la dernière version remplace l'ancienne).
+  var sending = false, timer = null;
+  function changed() { state.dirty = true; save(); scheduleSend(); }
+  function scheduleSend() {
+    clearTimeout(timer);
+    if (!whoName()) { setStatus("Enter your name above so your answers can be saved.", true); return; }
+    if (!C.endpoint) { setStatus("Test mode: nothing is sent."); return; }
+    setStatus("Saving…");
+    timer = setTimeout(function () { flush(false); }, 1200);
+  }
+  function flush(urgent) {
+    clearTimeout(timer);
+    if (!whoName() || !state.dirty || !C.endpoint) return;
+    if (sending) { timer = setTimeout(function () { flush(urgent); }, 800); return; }
+    sending = true; state.dirty = false; save();
     // text/plain évite la requête préliminaire CORS avec Google Apps Script
-    fetch(C.endpoint, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) })
-      .then(function () { show("Thank you " + who + "! Your answers have been sent. You can still edit them and resubmit: the latest version counts."); })
-      .catch(function () { show("Sending failed, please try again (your answers are kept on this device).", true); })
-      .then(function () { b.disabled = false; });
+    return fetch(C.endpoint, { method: "POST", mode: "no-cors", keepalive: !!urgent, headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(buildPayload()) })
+      .then(function () { if (!state.dirty) setStatus("✓ Saved automatically"); })
+      .catch(function () { state.dirty = true; save(); setStatus("No connection: will retry…", true); timer = setTimeout(function () { flush(false); }, 5000); })
+      .then(function () { sending = false; });
+  }
+  $("who").addEventListener("change", function () { changed(); });
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "hidden") flush(true); });
+  window.addEventListener("pagehide", function () { flush(true); });
+
+  $("send").addEventListener("click", function () {
+    if (!whoName()) { show("Please enter your name before submitting.", true); return; }
+    if (!C.endpoint) { console.log(buildPayload()); show("Test mode: no endpoint configured, nothing was sent (see the console).", false); return; }
+    state.dirty = true;
+    var b = $("send"); b.disabled = true;
+    var p = flush(false);
+    Promise.resolve(p).then(function () { show("Thank you " + whoName() + "! Your answers are saved. They are also saved automatically each time you change something."); b.disabled = false; });
   });
+
+  if (state.dirty && whoName() && C.endpoint) { scheduleSend(); }
+  else setStatus(C.endpoint ? "Your answers are saved automatically." : "Test mode: nothing is sent.");
 })();
 </script>
 </body>
