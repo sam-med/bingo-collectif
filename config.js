@@ -28,6 +28,6 @@ window.BINGO_CONFIG = {
     "I was glad to be out of the lab"
   ],
   // URL du script Google Apps Script déployé (voir README.md). Vide = mode test (rien n'est envoyé).
-  endpoint: "",
+  endpoint: "https://script.google.com/macros/s/AKfycbwTJA5_jeKtD8Phm7LQOg8rKt53cYwHf4aX4kv7qiNW_pFk-FJCTrD_7-LuE0tOBXcuow/exec",
   commentLabel: "Commentaire / nom (facultatif)"
 };
