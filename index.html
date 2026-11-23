@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bingo</title>
+<style>
+  :root { --bg:#f6f4ee; --fg:#222; --card:#fff; --accent:#2e7d5b; --accent-bg:#dff3e8; --muted:#777; --line:#d8d4c8; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#1b1c1e; --fg:#eee; --card:#26282b; --accent:#5cc597; --accent-bg:#1f3a2e; --muted:#9a9a9a; --line:#3a3d41; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.4 system-ui,sans-serif; }
+  main { max-width:640px; margin:0 auto; padding:16px; }
+  h1 { margin:8px 0 4px; font-size:1.6rem; }
+  p.sub { margin:0 0 16px; color:var(--muted); }
+  label.name { display:block; margin-bottom:16px; font-weight:600; }
+  input[type=text] { width:100%; padding:10px; font-size:16px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--fg); }
+  .grid { display:grid; gap:8px; }
+  .cell { background:var(--card); border:2px solid var(--line); border-radius:10px; padding:8px; display:flex; flex-direction:column; gap:6px; }
+  .cell.on { border-color:var(--accent); background:var(--accent-bg); }
+  .cell button { all:unset; cursor:pointer; text-align:center; font-weight:600; min-height:64px; display:flex; align-items:center; justify-content:center; font-size:.9rem; }
+  .cell input { font-size:14px; padding:6px; display:none; }
+  .cell.on input { display:block; }
+  .cell .tick { color:var(--accent); font-size:1.2rem; height:0; }
+  .count { margin:12px 0; color:var(--muted); }
+  .send { width:100%; padding:14px; font-size:1.05rem; font-weight:700; border:0; border-radius:10px; background:var(--accent); color:#fff; cursor:pointer; }
+  .send:disabled { opacity:.5; }
+  .msg { margin-top:12px; padding:12px; border-radius:8px; background:var(--accent-bg); display:none; }
+  .msg.err { background:#fbe0e0; color:#900; }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="title"></h1>
+  <p class="sub" id="subtitle"></p>
+  <label class="name">Votre prénom
+    <input type="text" id="who" autocomplete="given-name" placeholder="ex : Camille">
+  </label>
+  <div class="grid" id="grid"></div>
+  <p class="count" id="count"></p>
+  <button class="send" id="send">Envoyer mes réponses</button>
+  <div class="msg" id="msg"></div>
+</main>
+<script src="config.js"></script>
+<script>
+(function () {
+  var C = window.BINGO_CONFIG;
+  var KEY = "bingo-state:" + location.pathname;
+  var state = { who: "", cells: {} };
+  try { var s = JSON.parse(localStorage.getItem(KEY)); if (s) state = s; } catch (e) {}
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  var $ = function (id) { return document.getElementById(id); };
+  $("title").textContent = C.title;
+  document.title = C.title;
+  $("subtitle").textContent = C.subtitle;
+  $("who").value = state.who || "";
+  $("who").addEventListener("input", function (e) { state.who = e.target.value; save(); });
+  var grid = $("grid");
+  grid.style.gridTemplateColumns = "repeat(" + C.columns + ", 1fr)";
+
+  function updateCount() {
+    var n = Object.keys(state.cells).filter(function (k) { return state.cells[k].on; }).length;
+    $("count").textContent = n + " / " + C.squares.length + " cases validées";
+  }
+
+  C.squares.forEach(function (label, i) {
+    var st = state.cells[i] || (state.cells[i] = { on: false, comment: "" });
+    var cell = document.createElement("div");
+    cell.className = "cell" + (st.on ? " on" : "");
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = label;
+    var inp = document.createElement("input");
+    inp.type = "text";
+    inp.placeholder = C.commentLabel;
+    inp.value = st.comment || "";
+    btn.addEventListener("click", function () {
+      st.on = !st.on;
+      cell.classList.toggle("on", st.on);
+      if (st.on) inp.focus();
+      save(); updateCount();
+    });
+    inp.addEventListener("input", function () { st.comment = inp.value; save(); });
+    cell.appendChild(btn);
+    cell.appendChild(inp);
+    grid.appendChild(cell);
+  });
+  updateCount();
+
+  function show(text, err) {
+    var m = $("msg"); m.textContent = text; m.className = "msg" + (err ? " err" : ""); m.style.display = "block";
+  }
+
+  $("send").addEventListener("click", function () {
+    var who = (state.who || "").trim();
+    if (!who) { show("Indiquez votre prénom avant d'envoyer.", true); return; }
+    var answers = C.squares.map(function (label, i) {
+      var st = state.cells[i] || {};
+      return { index: i, square: label, checked: !!st.on, comment: (st.comment || "").trim() };
+    });
+    var payload = { participant: who, answers: answers };
+    if (!C.endpoint) { console.log(payload); show("Mode test : aucun endpoint configuré, rien n'a été envoyé (voir la console).", false); return; }
+    var b = $("send"); b.disabled = true;
+    // text/plain évite la requête préliminaire CORS avec Google Apps Script
+    fetch(C.endpoint, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) })
+      .then(function () { show("Merci " + who + " ! Vos réponses sont envoyées. Vous pouvez encore les modifier et renvoyer : la dernière version compte."); })
+      .catch(function () { show("Échec de l'envoi, réessayez (vos réponses sont gardées sur ce téléphone).", true); })
+      .then(function () { b.disabled = false; });
+  });
+})();
+</script>
+</body>
+</html>

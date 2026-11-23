@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bingo – statistiques</title>
+<style>
+  :root { --bg:#f6f4ee; --fg:#222; --card:#fff; --accent:#2e7d5b; --muted:#777; --line:#d8d4c8; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#1b1c1e; --fg:#eee; --card:#26282b; --accent:#5cc597; --muted:#9a9a9a; --line:#3a3d41; } }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.4 system-ui,sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:16px; }
+  input { padding:8px; font-size:16px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--fg); }
+  button { padding:8px 14px; font-size:16px; border:0; border-radius:8px; background:var(--accent); color:#fff; cursor:pointer; }
+  .row { margin:12px 0; padding:10px; background:var(--card); border:1px solid var(--line); border-radius:8px; }
+  .bar { height:10px; background:var(--accent); border-radius:5px; margin:6px 0; }
+  .names { color:var(--muted); font-size:.9rem; }
+  .err { color:#c33; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Statistiques</h1>
+  <p><input id="key" type="password" placeholder="Clé admin"> <button id="go">Charger</button> <button id="csv" style="display:none">Export CSV</button></p>
+  <p id="info"></p>
+  <div id="out"></div>
+</main>
+<script src="config.js"></script>
+<script>
+(function () {
+  var C = window.BINGO_CONFIG, rows = [];
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  $("go").addEventListener("click", function () {
+    if (!C.endpoint) { $("info").innerHTML = '<span class="err">Aucun endpoint configuré dans config.js.</span>'; return; }
+    $("info").textContent = "Chargement…";
+    fetch(C.endpoint + "?key=" + encodeURIComponent($("key").value))
+      .then(function (r) { return r.json(); })
+      .then(function (d) { if (d.error) throw new Error(d.error); rows = d.rows; render(); })
+      .catch(function (e) { $("info").innerHTML = '<span class="err">Erreur : ' + esc(e.message) + "</span>"; });
+  });
+  function render() {
+    var people = {}; rows.forEach(function (r) { people[r.participant] = 1; });
+    var nPeople = Object.keys(people).length;
+    $("info").textContent = nPeople + " participant(s)";
+    $("csv").style.display = "inline-block";
+    var by = {};
+    C.squares.forEach(function (s) { by[s] = { n: 0, names: [] }; });
+    rows.forEach(function (r) {
+      var b = by[r.square] || (by[r.square] = { n: 0, names: [] });
+      b.n++; if (r.comment) b.names.push(r.comment + " (vu par " + r.participant + ")");
+    });
+    var keys = Object.keys(by).sort(function (a, b) { return by[b].n - by[a].n; });
+    $("out").innerHTML = keys.map(function (k) {
+      var b = by[k], pct = nPeople ? Math.round(100 * b.n / nPeople) : 0;
+      return '<div class="row"><strong>' + esc(k) + "</strong> — " + b.n + " (" + pct + " %)" +
+        '<div class="bar" style="width:' + pct + '%"></div>' +
+        '<div class="names">' + b.names.map(esc).join(" · ") + "</div></div>";
+    }).join("");
+  }
+  $("csv").addEventListener("click", function () {
+    var lines = ["horodatage;participant;case;commentaire"].concat(rows.map(function (r) {
+      return [r.timestamp, r.participant, r.square, r.comment].map(function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(";");
+    }));
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob(["﻿" + lines.join("\n")], { type: "text/csv" }));
+    a.download = "bingo.csv"; a.click();
+  });
+})();
+</script>
+</body>
+</html>
