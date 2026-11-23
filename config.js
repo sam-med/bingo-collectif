@@ -1,8 +1,8 @@
 // ===== À PERSONNALISER =====
 window.BINGO_CONFIG = {
-  title: "Bingo !",
+  title: "BINGO",
   subtitle: "Tap a square when it applies to you, and add a comment if you like (optional).",
-  columns: 3,
+  columns: 4,
   // Une entrée = une case. Ajoutez / modifiez librement.
   squares: [
     "Someone explained a method I want to try",
