@@ -48,8 +48,6 @@
   <div class="grid" id="grid"></div>
   <p class="count" id="count"></p>
   <p class="status" id="status"></p>
-  <button class="send" id="send">Submit my answers</button>
-  <div class="msg" id="msg"></div>
 </main>
 
 <dialog id="dlg">
@@ -127,9 +125,6 @@
     paint(cur); updateCount(); changed(); cur = -1;
   });
 
-  function show(text, err) {
-    var m = $("msg"); m.textContent = text; m.className = "msg" + (err ? " err" : ""); m.style.display = "block";
-  }
   function setStatus(text, err) {
     var s = $("status"); s.textContent = text; s.className = "status" + (err ? " err" : "");
   }
@@ -167,15 +162,6 @@
   $("who").addEventListener("change", function () { changed(); });
   document.addEventListener("visibilitychange", function () { if (document.visibilityState === "hidden") flush(true); });
   window.addEventListener("pagehide", function () { flush(true); });
-
-  $("send").addEventListener("click", function () {
-    if (!whoName()) { show("Please enter your name before submitting.", true); return; }
-    if (!C.endpoint) { console.log(buildPayload()); show("Test mode: no endpoint configured, nothing was sent (see the console).", false); return; }
-    state.dirty = true;
-    var b = $("send"); b.disabled = true;
-    var p = flush(false);
-    Promise.resolve(p).then(function () { show("Thank you " + whoName() + "! Your answers are saved. They are also saved automatically each time you change something."); b.disabled = false; });
-  });
 
   if (state.dirty && whoName() && C.endpoint) { scheduleSend(); }
   else setStatus(C.endpoint ? "Your answers are saved automatically." : "Test mode: nothing is sent.");
