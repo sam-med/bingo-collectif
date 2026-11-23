@@ -1,7 +1,7 @@
 // ===== À PERSONNALISER =====
 window.BINGO_CONFIG = {
   title: "BINGO",
-  subtitle: "Tap a square when it applies to you, and add a comment if you like (optional).",
+  subtitle: "Or How to Make Me Pay Attention During Presentations",
   columns: 4,
   // Une entrée = une case. Ajoutez / modifiez librement.
   squares: [
