@@ -1,6 +1,6 @@
 // ===== À PERSONNALISER =====
 window.BINGO_CONFIG = {
-  title: "BINGO",
+  title: "Dyna-BINGO",
   subtitle: "Or How to Make Me Pay Attention During Presentations",
   columns: 4,
   // Une entrée = une case. Ajoutez / modifiez librement.
@@ -21,7 +21,7 @@ window.BINGO_CONFIG = {
     "Someone presented a null result honestly",
     "I finally understood what a colleague actually works on",
     "I forgot I was listening to science!",
-    "Someone said “ICA”",
+    "Someone said too much “ICA”",
     "Someone thanked the whole team",
     "I almost fell asleep",
     "I got hungry before the break",
